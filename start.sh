@@ -41,11 +41,11 @@ EOF
 fi
 
 # remove porta fixa
-sed -i '/^port /dI' "$CFG"
+sed -i '/^port /d' "$CFG" || true
 
 # rcon
 if [ -n "$RCON_ENV" ]; then
-    sed -i '/^rcon_password/dI' "$CFG"
+    sed -i '/^rcon_password/d' "$CFG" || true
     echo "rcon_password $RCON_ENV" >> "$CFG"
 fi
 
