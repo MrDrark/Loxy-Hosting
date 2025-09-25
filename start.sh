@@ -22,7 +22,7 @@ info "Baixando $GITHUB_ZIP_RAW..."
 if curl -fsSL "$GITHUB_ZIP_RAW" -o /tmp/samp03.zip; then
     info "Extraindo..."
     unzip -oq /tmp/samp03.zip -d "$TMPDIR"
-    rsync -a "$TMPDIR"/ "$WORKDIR"/
+    cp -r "$TMPDIR"/* "$WORKDIR"/
     rm -rf "$TMPDIR" /tmp/samp03.zip
 else
     warn "Falha ao baixar $GITHUB_ZIP_RAW, usando arquivos existentes."
