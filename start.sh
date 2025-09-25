@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-WORKDIR="/mnt/server"
+WORKDIR="/home/container"
 cd "$WORKDIR" || exit 1
 
 echo ">> Limpando logs antigos..."
