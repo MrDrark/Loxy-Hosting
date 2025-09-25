@@ -54,7 +54,7 @@ so_count=$(ls "$PLUGINS_DIR"/*.so 2>/dev/null | wc -l)
 dll_count=$(ls "$PLUGINS_DIR"/*.dll 2>/dev/null | wc -l)
 
 if [ "$so_count" -eq 0 ] && [ "$dll_count" -gt 0 ]; then
-    warn "Renomeando .dll para .so (Alpine)..."
+    warn "Renomeando .dll para .so (Ubuntu)..."
     for dll in "$PLUGINS_DIR"/*.dll; do
         cp -n "$dll" "${dll%.dll}.so"
     done
