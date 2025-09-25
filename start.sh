@@ -7,6 +7,8 @@ LOG_DIR="$WORKDIR/logs"
 PLUGINS_DIR="$WORKDIR/plugins"
 RCON_ENV="${RCON_PASS:-${PASSWORD:-}}"
 SERVER_ARGS="$@"
+TMPDIR="/tmp/samp03_extract"
+ZIP_URL="https://raw.githubusercontent.com/MrDrark/Loxy-Hosting/main/samp03.zip"
 
 info() { echo "[start.sh] $*"; }
 warn() { echo "[start.sh][WARN] $*"; }
@@ -18,15 +20,38 @@ if [ -d "$LOG_DIR" ]; then
 fi
 rm -f "$WORKDIR/samp.log" "$WORKDIR/server_log.txt" 2>/dev/null || true
 
-# --- Verificar/baixar binário ---
+# --- Verificar/baixar binário e arquivos do ZIP ---
 if [ ! -f "$SERVER_BIN" ]; then
-    info "Binário não encontrado. Baixando..."
-    curl -fsSL https://github.com/sampbr/start/raw/main/samp03svr -o "$SERVER_BIN"
+    info "Binário não encontrado. Baixando pacote completo..."
+    mkdir -p "$TMPDIR"
+    curl -fsSL "$ZIP_URL" -o /tmp/samp03.zip
+    unzip -oq /tmp/samp03.zip -d "$TMPDIR"
+    cp -r "$TMPDIR"/* "$WORKDIR"/
+    rm -rf "$TMPDIR" /tmp/samp03.zip
     chmod 777 "$SERVER_BIN"
-    info "Binário baixado com sucesso!"
+    info "Binário e arquivos extraídos com sucesso!"
 fi
 
-# --- Plugins .dll -> .so ---
+# --- Configurar server.cfg ---
+CFG="$WORKDIR/server.cfg"
+if [ ! -f "$CFG" ]; then
+    cat > "$CFG" <<'EOF'
+# server.cfg gerado automaticamente
+maxplayers 50
+hostname SA-MP Server
+EOF
+fi
+
+# Remover porta fixa
+sed -i '/^port /d' "$CFG" || true
+
+# Adicionar RCON se definido
+if [ -n "$RCON_ENV" ]; then
+    sed -i '/^rcon_password/d' "$CFG" || true
+    echo "rcon_password $RCON_ENV" >> "$CFG"
+fi
+
+# --- Plugins .dll → .so ---
 mkdir -p "$PLUGINS_DIR"
 dll_count=$(ls "$PLUGINS_DIR"/*.dll 2>/dev/null | wc -l)
 if [ "$dll_count" -gt 0 ]; then
@@ -36,8 +61,7 @@ if [ "$dll_count" -gt 0 ]; then
     done
 fi
 
-# --- Substituir .dll por .so no server.cfg ---
-CFG="$WORKDIR/server.cfg"
+# Substituir .dll por .so no server.cfg
 if [ -f "$CFG" ]; then
     sed -i 's/\.dll/\.so/gI' "$CFG"
 fi
