@@ -1,40 +1,41 @@
 #!/bin/bash
+set -euo pipefail
 
-# Caminho para o executável do servidor
-SERVER_PATH="./samp03svr"
-LOG_DIR="./logs"
+WORKDIR="$(pwd)"
+SERVER_BIN="$WORKDIR/samp03svr"
+LOG_DIR="$WORKDIR/logs"
+TMPDIR="/tmp/samp03_extract"
 
-# Remover a pasta logs se existir
+info() { echo "[start.sh] $*"; }
+
+# --- Limpar logs antigos ---
 if [ -d "$LOG_DIR" ]; then
-    echo "Removendo pasta logs..."
+    info "Removendo logs antigos..."
     rm -rf "$LOG_DIR"
 fi
+rm -f "$WORKDIR/samp.log" "$WORKDIR/server_log.txt" 2>/dev/null || true
 
-# Verificar se o arquivo samp03svr existe, senão baixar
-if [ ! -f "$SERVER_PATH" ]; then
-    echo "Arquivo $SERVER_PATH não encontrado. Tentando baixar..."
-    
-    # Testar se o ambiente permite downloads antes de executar o curl
-    if ! curl --silent --head --fail https://github.com/MrDrark/Loxy-Hosting/raw/refs/heads/main/samp03.zip > /dev/null; then
-        echo "Falha ao conectar ao servidor de download. Verifique sua conexão ou permissões."
-        exit 1
-    fi
+# --- Baixar e extrair binário se não existir ---
+if [ ! -f "$SERVER_BIN" ]; then
+    info "Binário não encontrado. Baixando pacote completo..."
 
-    # Baixar o arquivo
-    curl -L https://github.com/MrDrark/Loxy-Hosting/raw/refs/heads/main/samp03.zip -o "$SERVER_PATH"
-    
-    # Verificar se o download foi bem-sucedido
-    if [ ! -f "$SERVER_PATH" ]; then
-        echo "Erro ao baixar o arquivo samp03svr. O servidor pode estar sem acesso à internet."
-        exit 1
-    fi
+    # Baixar o zip
+    curl -fsSL https://github.com/MrDrark/Loxy-Hosting/raw/refs/heads/main/samp03.zip -o /tmp/samp03.zip
 
-    echo "Arquivo baixado com sucesso!"
+    # Criar pasta temporária e extrair
+    mkdir -p "$TMPDIR"
+    unzip -oq /tmp/samp03.zip -d "$TMPDIR"
+
+    # Copiar binário e arquivos pro diretório do servidor
+    cp -r "$TMPDIR"/* "$WORKDIR"/
+    rm -rf "$TMPDIR" /tmp/samp03.zip
+
+    info "Binário e arquivos extraídos com sucesso!"
 fi
 
-# Garantir que o arquivo samp03svr tem permissão 777
-chmod 777 "$SERVER_PATH"
+# --- Garantir permissões do binário ---
+chmod +x "$SERVER_BIN"
 
-# Iniciar o servidor e exibir saída
-echo "Iniciando o servidor..."
-exec "$SERVER_PATH"
+# --- Iniciar o servidor ---
+info "Iniciando servidor..."
+exec "$SERVER_BIN"
