@@ -1,75 +1,57 @@
 #!/bin/bash
 set -euo pipefail
 
-WORKDIR="$(pwd)"
-SERVER_BIN="$WORKDIR/samp03svr"
-LOG_DIR="$WORKDIR/logs"
-TMPDIR="/tmp/samp03_extract"
-ZIP_URL="https://raw.githubusercontent.com/sampbr/start/main/samp03.zip"
+# Caminho para o executável do servidor
+SERVER_PATH="./samp03svr"
+LOG_DIR="./logs"
+PLUGINS_DIR="./plugins"
 RCON_ENV="${RCON_PASS:-${PASSWORD:-}}"
-SERVER_ARGS="$@"
-
-info() { echo "[start.sh] $*"; }
-warn() { echo "[start.sh][WARN] $*"; }
-
-# --- Preparar ambiente ---
-info "Preparando ambiente..."
-mkdir -p "$WORKDIR" "$TMPDIR"
 
 # --- Limpar logs antigos ---
 if [ -d "$LOG_DIR" ]; then
-    info "Removendo logs antigos..."
+    echo "Removendo logs antigos..."
     rm -rf "$LOG_DIR"
 fi
-rm -f "$WORKDIR/samp.log" "$WORKDIR/server_log.txt" 2>/dev/null || true
+rm -f ./samp.log ./server_log.txt 2>/dev/null || true
 
-# --- Baixar pacote base se binário não existir ---
-if [ ! -f "$SERVER_BIN" ]; then
-    info "Binário não encontrado. Tentando baixar zip completo..."
-    curl -fsSL "$ZIP_URL" -o /tmp/samp03.zip
-    unzip -oq /tmp/samp03.zip -d "$TMPDIR"
-    cp -r "$TMPDIR"/* "$WORKDIR"/
-    rm -rf "$TMPDIR" /tmp/samp03.zip
-    info "Binário e arquivos extraídos com sucesso!"
-fi
-
-# --- Configurar server.cfg ---
-CFG="$WORKDIR/server.cfg"
-if [ ! -f "$CFG" ]; then
-    cat > "$CFG" <<'EOF'
-# server.cfg gerado automaticamente
-maxplayers 50
-hostname SA-MP Server
-EOF
-fi
-# Remove porta fixa
-sed -i '/^port /d' "$CFG" || true
-# Adiciona RCON se definido
-if [ -n "$RCON_ENV" ]; then
-    sed -i '/^rcon_password/d' "$CFG" || true
-    echo "rcon_password $RCON_ENV" >> "$CFG"
-fi
-
-# --- Plugins .dll → .so ---
-PLUGINS_DIR="$WORKDIR/plugins"
+# --- Converter plugins .dll para .so ---
 mkdir -p "$PLUGINS_DIR"
-so_count=$(ls "$PLUGINS_DIR"/*.so 2>/dev/null | wc -l)
 dll_count=$(ls "$PLUGINS_DIR"/*.dll 2>/dev/null | wc -l)
-if [ "$so_count" -eq 0 ] && [ "$dll_count" -gt 0 ]; then
-    warn "Renomeando .dll para .so (Ubuntu)..."
+if [ "$dll_count" -gt 0 ]; then
+    echo "Renomeando plugins .dll para .so..."
     for dll in "$PLUGINS_DIR"/*.dll; do
         cp -n "$dll" "${dll%.dll}.so"
     done
-    sed -i 's/\.dll/\.so/gI' "$CFG" || true
 fi
 
-# --- Garantir permissões do binário ---
-if [ ! -f "$SERVER_BIN" ]; then
-    echo "[start.sh][ERRO] Binário $SERVER_BIN não encontrado."
-    exit 1
+# --- Substituir .dll por .so no server.cfg ---
+CFG="./server.cfg"
+if [ -f "$CFG" ]; then
+    sed -i 's/\.dll/\.so/gI' "$CFG"
 fi
-chmod 777 "$SERVER_BIN"
+
+# --- Verificar se o arquivo samp03svr existe, senão baixar ---
+if [ ! -f "$SERVER_PATH" ]; then
+    echo "Arquivo $SERVER_PATH não encontrado. Tentando baixar..."
+    
+    if ! curl --silent --head --fail https://github.com/sampbr/start/raw/main/samp03svr > /dev/null; then
+        echo "Falha ao conectar ao servidor de download. Verifique sua conexão ou permissões."
+        exit 1
+    fi
+
+    curl -L https://github.com/sampbr/start/raw/main/samp03svr -o "$SERVER_PATH"
+    
+    if [ ! -f "$SERVER_PATH" ]; then
+        echo "Erro ao baixar o arquivo samp03svr. O servidor pode estar sem acesso à internet."
+        exit 1
+    fi
+
+    echo "Arquivo baixado com sucesso!"
+fi
+
+# --- Garantir que o arquivo samp03svr tem permissão 777 ---
+chmod 777 "$SERVER_PATH"
 
 # --- Iniciar o servidor ---
-info "Iniciando servidor..."
-exec "$SERVER_BIN" $SERVER_ARGS
+echo "Iniciando o servidor..."
+exec "$SERVER_PATH"
