@@ -1,50 +1,50 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# --- Configurações ---
 GITHUB_ZIP_RAW="https://raw.githubusercontent.com/MrDrark/Loxy-Hosting/main/samp03.zip"
 WORKDIR="$(pwd)"
 TMPDIR="/tmp/samp03_extract"
 RCON_ENV="${RCON_PASS:-${PASSWORD:-}}"
 
-# --- Helpers ---
-info() { echo "[SA-MP] $*"; }
-warn() { echo "[SA-MP][WARN] $*"; }
+info() { echo "[start.sh] $*"; }
+warn() { echo "[start.sh][WARN] $*"; }
 
-# --- Preparação ---
-info "Preparando ambiente..."
+info "Iniciando processo de preparação..."
 rm -rf "$TMPDIR"
 mkdir -p "$TMPDIR"
 
-# Limpar logs antigos
+info "Removendo logs antigos..."
 rm -rf "${WORKDIR}/logs" "${WORKDIR}/samp.log" "${WORKDIR}/server_log.txt" 2>/dev/null || true
 
-# --- Baixar pacote ---
-info "Baixando servidor..."
+info "Baixando $GITHUB_ZIP_RAW..."
 if curl -fsSL "$GITHUB_ZIP_RAW" -o /tmp/samp03.zip; then
-    info "Extraindo arquivos..."
+    info "Extraindo zip..."
     unzip -oq /tmp/samp03.zip -d "$TMPDIR"
     rsync -a "$TMPDIR"/ "$WORKDIR"/
     rm -rf "$TMPDIR" /tmp/samp03.zip
+    info "Arquivos atualizados em $WORKDIR."
 else
     warn "Falha ao baixar $GITHUB_ZIP_RAW, usando arquivos já existentes."
 fi
 
 cd "$WORKDIR"
 
-# --- RCON ---
+# --- RCON e porta ---
 CFG="./server.cfg"
 if [ ! -f "$CFG" ]; then
     cat > "$CFG" <<'EOF'
 # server.cfg gerado automaticamente
 maxplayers 50
-port 7777
 hostname SA-MP Server
 EOF
 fi
 
+# Remove porta fixa para o Pterodactyl injetar corretamente
+sed -i '/^port /dI' "$CFG"
+
+# RCON
 if [ -n "$RCON_ENV" ]; then
-    sed -i "/^rcon_password/d" "$CFG"
+    sed -i '/^rcon_password/dI' "$CFG"
     echo "rcon_password $RCON_ENV" >> "$CFG"
 fi
 
@@ -56,7 +56,7 @@ so_count=$(ls "$PLUGINS_DIR"/*.so 2>/dev/null | wc -l)
 dll_count=$(ls "$PLUGINS_DIR"/*.dll 2>/dev/null | wc -l)
 
 if [ "$so_count" -eq 0 ] && [ "$dll_count" -gt 0 ]; then
-    warn "Sem plugins .so, convertendo nomes de .dll -> .so (pode não funcionar)."
+    warn "Sem plugins .so, renomeando .dll -> .so (pode não funcionar)."
     for dll in "$PLUGINS_DIR"/*.dll; do
         cp -n "$dll" "${dll%.dll}.so"
     done
@@ -66,7 +66,6 @@ fi
 # --- Binário ---
 SERVER_BIN="./samp03svr"
 if [ ! -x "$SERVER_BIN" ]; then
-    warn "Binário $SERVER_BIN não encontrado, tentando ajustar..."
     for f in ./samp*svr*; do
         [ -f "$f" ] && mv -f "$f" "$SERVER_BIN" && break
     done
@@ -74,10 +73,9 @@ if [ ! -x "$SERVER_BIN" ]; then
 fi
 
 if [ ! -f "$SERVER_BIN" ]; then
-    echo "[SA-MP][ERRO] Não encontrei o binário do servidor."
+    echo "[start.sh][ERRO] Binário $SERVER_BIN não encontrado."
     exit 1
 fi
 
-# --- Start ---
-info "Iniciando servidor..."
+info "Iniciando o servidor..."
 exec "$SERVER_BIN"
