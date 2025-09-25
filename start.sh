@@ -1,25 +1,29 @@
 #!/bin/bash
 set -euo pipefail
 
-SERVER_BIN="./samp03svr"
-LOG_DIR="./logs"
+WORKDIR="/mnt/server"
+cd "$WORKDIR" || exit 1
 
-info() { echo "[start.sh] $*"; }
+SERVER_BIN="$WORKDIR/samp03svr"
+CFG_FILE="$WORKDIR/server.cfg"
+LOG_DIR="$WORKDIR/logs"
 
 # --- Limpar logs antigos ---
 if [ -d "$LOG_DIR" ]; then
-    info "Removendo logs antigos..."
+    echo ">> Limpando logs..."
     rm -rf "$LOG_DIR"
 fi
-rm -f ./samp.log ./server_log.txt 2>/dev/null || true
+mkdir -p "$LOG_DIR"
 
-# --- Garantir permissão do binário ---
+# --- Verificar se o binário existe ---
 if [ ! -f "$SERVER_BIN" ]; then
     echo "[start.sh][ERRO] Binário $SERVER_BIN não encontrado!"
     exit 1
 fi
+
+# --- Garantir permissões corretas ---
 chmod +x "$SERVER_BIN"
 
 # --- Iniciar o servidor ---
-info "Iniciando servidor..."
-exec "$SERVER_BIN" "$@"
+echo ">> Iniciando o SA-MP server..."
+exec "$SERVER_BIN" "$CFG_FILE"
