@@ -9,27 +9,26 @@ RCON_ENV="${RCON_PASS:-${PASSWORD:-}}"
 info() { echo "[start.sh] $*"; }
 warn() { echo "[start.sh][WARN] $*"; }
 
-info "Iniciando processo de preparação..."
+# Porta passada como argumento (ex: -p 25565)
+SERVER_ARGS="$@"
+
+info "Preparando ambiente..."
 rm -rf "$TMPDIR"
 mkdir -p "$TMPDIR"
 
-info "Removendo logs antigos..."
 rm -rf "${WORKDIR}/logs" "${WORKDIR}/samp.log" "${WORKDIR}/server_log.txt" 2>/dev/null || true
 
 info "Baixando $GITHUB_ZIP_RAW..."
 if curl -fsSL "$GITHUB_ZIP_RAW" -o /tmp/samp03.zip; then
-    info "Extraindo zip..."
+    info "Extraindo..."
     unzip -oq /tmp/samp03.zip -d "$TMPDIR"
     rsync -a "$TMPDIR"/ "$WORKDIR"/
     rm -rf "$TMPDIR" /tmp/samp03.zip
-    info "Arquivos atualizados em $WORKDIR."
-else
-    warn "Falha ao baixar $GITHUB_ZIP_RAW, usando arquivos já existentes."
 fi
 
 cd "$WORKDIR"
 
-# --- RCON e porta ---
+# --- server.cfg ---
 CFG="./server.cfg"
 if [ ! -f "$CFG" ]; then
     cat > "$CFG" <<'EOF'
@@ -39,7 +38,7 @@ hostname SA-MP Server
 EOF
 fi
 
-# Remove porta fixa para o Pterodactyl injetar corretamente
+# Remove qualquer linha de porta fixa
 sed -i '/^port /dI' "$CFG"
 
 # RCON
@@ -77,5 +76,5 @@ if [ ! -f "$SERVER_BIN" ]; then
     exit 1
 fi
 
-info "Iniciando o servidor..."
-exec "$SERVER_BIN"
+info "Iniciando servidor na porta definida pelo painel..."
+exec "$SERVER_BIN" $SERVER_ARGS
