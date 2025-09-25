@@ -5,30 +5,32 @@ GITHUB_ZIP_RAW="https://raw.githubusercontent.com/MrDrark/Loxy-Hosting/main/samp
 WORKDIR="$(pwd)"
 TMPDIR="/tmp/samp03_extract"
 RCON_ENV="${RCON_PASS:-${PASSWORD:-}}"
+SERVER_ARGS="$@"
 
 info() { echo "[start.sh] $*"; }
 warn() { echo "[start.sh][WARN] $*"; }
-
-# Porta passada como argumento (ex: -p 25565)
-SERVER_ARGS="$@"
 
 info "Preparando ambiente..."
 rm -rf "$TMPDIR"
 mkdir -p "$TMPDIR"
 
+# Limpa logs antigos
 rm -rf "${WORKDIR}/logs" "${WORKDIR}/samp.log" "${WORKDIR}/server_log.txt" 2>/dev/null || true
 
+# --- Baixar pacote base ---
 info "Baixando $GITHUB_ZIP_RAW..."
 if curl -fsSL "$GITHUB_ZIP_RAW" -o /tmp/samp03.zip; then
     info "Extraindo..."
     unzip -oq /tmp/samp03.zip -d "$TMPDIR"
     rsync -a "$TMPDIR"/ "$WORKDIR"/
     rm -rf "$TMPDIR" /tmp/samp03.zip
+else
+    warn "Falha ao baixar $GITHUB_ZIP_RAW, usando arquivos existentes."
 fi
 
 cd "$WORKDIR"
 
-# --- server.cfg ---
+# --- Config server.cfg ---
 CFG="./server.cfg"
 if [ ! -f "$CFG" ]; then
     cat > "$CFG" <<'EOF'
@@ -38,10 +40,10 @@ hostname SA-MP Server
 EOF
 fi
 
-# Remove qualquer linha de porta fixa
+# remove porta fixa
 sed -i '/^port /dI' "$CFG"
 
-# RCON
+# rcon
 if [ -n "$RCON_ENV" ]; then
     sed -i '/^rcon_password/dI' "$CFG"
     echo "rcon_password $RCON_ENV" >> "$CFG"
