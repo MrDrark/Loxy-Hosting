@@ -3,7 +3,7 @@ set -euo pipefail
 
 WORKDIR="$(pwd)"
 TMPDIR="/tmp/samp03_extract"
-GITHUB_ZIP_RAW="https://raw.githubusercontent.com/MrDrark/Loxy-Hosting/main/samp03.zip"
+GITHUB_ZIP_RAW="https://raw.githubusercontent.com/SEUUSUARIO/Loxy-Hosting/main/samp03.zip"
 RCON_ENV="${RCON_PASS:-${PASSWORD:-}}"
 SERVER_ARGS="$@"
 
