@@ -4,35 +4,22 @@ set -euo pipefail
 SERVER_BIN="./samp03svr"
 LOG_DIR="./logs"
 
+info() { echo "[start.sh] $*"; }
+
 # --- Limpar logs antigos ---
-[ -d "$LOG_DIR" ] && rm -rf "$LOG_DIR"
-rm -f samp.log server_log.txt 2>/dev/null || true
-
-# --- Plugins .dll → .so (se existir) ---
-PLUGINS_DIR="./plugins"
-mkdir -p "$PLUGINS_DIR"
-dll_count=$(ls "$PLUGINS_DIR"/*.dll 2>/dev/null | wc -l)
-if [ "$dll_count" -gt 0 ]; then
-    echo "[start.sh] Renomeando plugins .dll para .so..."
-    for dll in "$PLUGINS_DIR"/*.dll; do
-        cp -n "$dll" "${dll%.dll}.so"
-    done
+if [ -d "$LOG_DIR" ]; then
+    info "Removendo logs antigos..."
+    rm -rf "$LOG_DIR"
 fi
+rm -f ./samp.log ./server_log.txt 2>/dev/null || true
 
-# --- Substituir .dll por .so no server.cfg ---
-CFG="./server.cfg"
-if [ -f "$CFG" ]; then
-    sed -i 's/\.dll/\.so/gI' "$CFG"
-fi
-
-# --- Verificar binário Linux ---
+# --- Garantir permissão do binário ---
 if [ ! -f "$SERVER_BIN" ]; then
-    echo "[start.sh] Erro: Binário $SERVER_BIN não encontrado. Certifique-se de que a versão Linux foi instalada!"
+    echo "[start.sh][ERRO] Binário $SERVER_BIN não encontrado!"
     exit 1
 fi
-
 chmod +x "$SERVER_BIN"
 
-# --- Iniciar servidor ---
-echo "Iniciando servidor..."
-exec "$SERVER_BIN"
+# --- Iniciar o servidor ---
+info "Iniciando servidor..."
+exec "$SERVER_BIN" "$@"
